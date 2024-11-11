@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Data Chart</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chart-container {
+            width: 80%;
+            max-width: 900px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        #chart {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .bar {
+            fill: #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bar:hover {
+            fill: #45a049;
+        }
+
+        .axis path,
+        .axis line {
+            shape-rendering: crispEdges;
+            stroke: #ccc;
+        }
+
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: 120px;
+            height: 28px;
+            padding: 5px;
+            font-size: 12px;
+            background: lightsteelblue;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c9302c;
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+
+    <div class="chart-container">
+        <h1>Sales Data Chart</h1>
+        <div id="chart"></div>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <script>
+        // Fetch sales data from your API endpoint
+        fetch("/charts/api/sales/")
+            .then(response => response.json())
+            .then(data => {
+                console.log("Fetched Data:", data); // Log the data to check the structure
+
+                // Ensure that the data is properly structured
+                if (!data || data.length === 0) {
+                    alert("No data available for the chart!");
+                    return;
+                }
+
+                const width = document.getElementById('chart').offsetWidth;
+                const height = 400;
+
+                const margin = { top: 40, right: 30, bottom: 60, left: 40 };
+                const chartWidth = width - margin.left - margin.right;
+                const chartHeight = height - margin.top - margin.bottom;
+
+                // Create the SVG container
+                const svg = d3.select("#chart").append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .append("g")
+                    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+                // Set up scales
+                const x = d3.scaleBand()
+                    .domain(data.map(d => d.month))
+                    .range([0, chartWidth])
+                    .padding(0.1);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(data, d => d.sales)])
+                    .nice()
+                    .range([chartHeight, 0]);
+
+                // X-Axis with rotated labels for readability
+                const xAxis = svg.append("g")
+                    .attr("transform", `translate(0, ${chartHeight})`)
+                    .call(d3.axisBottom(x))
+                    .selectAll("text")
+                    .style("text-anchor", "middle")
+                    .attr("transform", "rotate(-45)") // Rotate labels
+                    .style("font-size", "12px")
+                    .style("fill", "#333");
+
+                // Y-Axis
+                svg.append("g")
+                    .call(d3.axisLeft(y))
+                    .style("font-size", "12px")
+                    .style("fill", "#333");
+
+                // Create bars
+                const bars = svg.selectAll(".bar")
+                    .data(data)
+                    .enter().append("rect")
+                    .attr("class", "bar")
+                    .attr("x", d => x(d.month))
+                    .attr("y", d => y(d.sales))
+                    .attr("width", x.bandwidth())
+                    .attr("height", d => chartHeight - y(d.sales));
+
+                // Add tooltips for bar hover
+                const tooltip = d3.select("#tooltip");
+
+                bars.on("mouseover", function(event, d) {
+                    // Ensure that the data is present and correctly structured
+                    if (d && d.month && d.sales) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        tooltip.html(`Month: ${d.month}<br>Sales: ${d.sales}`)
+                            .style("left", `${event.pageX + 5}px`)
+                            .style("top", `${event.pageY - 28}px`);
+                    } else {
+                        console.error("Data missing for tooltip:", d);
+                    }
+                })
+                .on("mouseout", function() {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                alert("An error occurred while fetching the sales data.");
+            });
+
+        // Logout function that sends a POST request to the /logout/ route
+        function logout() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch('/logout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken  // Include the CSRF token
+                },
+                body: JSON.stringify({ logout: true })
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = "/login/"; // Redirect to login page
+                } else {
+                    alert("Logout failed!");
+                }
+            })
+            .catch(error => {
+                console.error("Error during logout:", error);
+                alert("An error occurred during logout.");
+            });
+        }
+    </script>
+</body>
+</html>

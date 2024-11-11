@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Data Chart</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chart-container {
+            width: 80%;
+            max-width: 900px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        #chart {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .bar {
+            fill: #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bar:hover {
+            fill: #45a049;
+        }
+
+        .axis path,
+        .axis line {
+            shape-rendering: crispEdges;
+            stroke: #ccc;
+        }
+
+        .sales-info {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #333;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c9302c;
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+
+    <div class="chart-container">
+        <h1>Sales Data Chart</h1>
+        <div id="chart"></div>
+        <div class="sales-info" id="sales-info">Hover over a bar to see the sales data.</div>
+    </div>
+
+    <script>
+        // Mock Data for testing purposes
+        const data = [
+            { month: "January", sales: 100 },
+            { month: "February", sales: 150 },
+            { month: "March", sales: 200 },
+            { month: "April", sales: 250 },
+            { month: "May", sales: 300 },
+            { month: "June", sales: 350 },
+            { month: "July", sales: 400 }
+        ];
+
+        const width = document.getElementById('chart').offsetWidth;
+        const height = 400;
+
+        const margin = { top: 40, right: 30, bottom: 60, left: 40 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        // Create the SVG container for the chart
+        const svg = d3.select("#chart").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        // Set up scales for the chart
+        const x = d3.scaleBand()
+            .domain(data.map(d => d.month))
+            .range([0, chartWidth])
+            .padding(0.1);
+
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.sales)])
+            .nice()
+            .range([chartHeight, 0]);
+
+        // X-Axis with rotated labels for readability
+        const xAxis = svg.append("g")
+            .attr("transform", `translate(0, ${chartHeight})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .style("text-anchor", "middle")
+            .attr("transform", "rotate(-45)") // Rotate labels
+            .style("font-size", "12px")
+            .style("fill", "#333");
+
+        // Y-Axis
+        svg.append("g")
+            .call(d3.axisLeft(y))
+            .style("font-size", "12px")
+            .style("fill", "#333");
+
+        // Create bars in the chart
+        const bars = svg.selectAll(".bar")
+            .data(data)
+            .enter().append("rect")
+            .attr("class", "bar")
+            .attr("x", d => x(d.month))
+            .attr("y", d => y(d.sales))
+            .attr("width", x.bandwidth())
+            .attr("height", d => chartHeight - y(d.sales));
+
+        // Sales Info on Hover
+        bars.on("mouseover", function(event, d) {
+            // Ensure 'd' is the data object for this bar
+            if (d && d.month && d.sales) {
+                const salesInfo = document.getElementById("sales-info");
+                salesInfo.style.opacity = 1;
+                salesInfo.textContent = `${d.month}: Sales = ${d.sales}`;
+            }
+        })
+        .on("mouseout", function() {
+            const salesInfo = document.getElementById("sales-info");
+            salesInfo.style.opacity = 0;
+        });
+
+        // Logout function
+        function logout() {
+            alert("Logging out...");
+            // Implement logout functionality here (e.g., redirect or clear session)
+            window.location.href = "/charts/logout";  // Redirect to logout route
+        }
+    </script>
+</body>
+</html>
